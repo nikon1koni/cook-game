@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#fff3e2">
+<title>厨房乱斗 · 把摇到的菜做出来</title>
+<meta name="description" content="用 64 道家常菜和调理食谱玩的小游戏：摇一道菜，然后备菜、控火候、调味、装盘。">
+<style>
+  :root{
+    --bg:#fff5e6;
+    --card:#fffdf8;
+    --ink:#2d2016;
+    --muted:#8d7662;
+    --line:#f0dcc4;
+    --brand:#e2542f;
+    --brand-deep:#a9341a;
+    --gold:#f0a33d;
+    --green:#4f7a4a;
+    --shadow:0 14px 40px rgba(120,70,30,.12);
+    --r:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(900px 420px at 10% -10%, #ffe0b8 0%, transparent 60%),
+      radial-gradient(700px 380px at 110% 0%, #ffd6c2 0%, transparent 55%),
+      var(--bg);
+    min-height:100dvh;
+    padding:0 16px calc(28px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:680px;margin:0 auto}
+
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:18px 2px 14px;
+  }
+  .logo{display:flex;align-items:center;gap:9px;font-weight:900;font-size:16px;letter-spacing:.02em}
+  .logo .wok{
+    width:34px;height:34px;border-radius:12px;background:#ffe3c4;border:1px solid #ffd1a8;
+    display:grid;place-items:center;font-size:18px;box-shadow:0 4px 12px rgba(190,110,40,.15);
+  }
+  .logo small{display:block;font-size:9px;letter-spacing:.22em;color:var(--muted);font-weight:700;margin-top:2px}
+  .hud{display:flex;align-items:center;gap:8px}
+  .dex{font-size:10px;color:var(--muted);background:#fff0dc;border:1px solid #f3ddc4;border-radius:999px;padding:6px 10px}
+  .dex b{color:var(--brand-deep)}
+  .sound{
+    width:34px;height:34px;border-radius:50%;border:1px solid #f0d8bd;background:#fff8ee;
+    color:#a4653b;font-size:14px;cursor:pointer;
+  }
+  .sound.off{opacity:.45;text-decoration:line-through}
+
+  .screen{display:none;animation:fadeUp .35s ease}
+  .screen.active{display:block}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* ---------- 开始 / 摇菜 ---------- */
+  .hero{text-align:center;margin:12px 0 18px}
+  .hero h1{margin:0;font-size:clamp(28px,7vw,38px);line-height:1.2;letter-spacing:-.02em}
+  .hero h1 em{font-style:normal;color:var(--brand)}
+  .hero p{margin:10px auto 0;max-width:30em;color:var(--muted);font-size:13px;line-height:1.7}
+
+  .slotbox{
+    border-radius:24px;padding:16px;
+    background:radial-gradient(120% 100% at 50% -10%, #6a3b22 0%, #2c1a11 60%, #1d110a 100%);
+    box-shadow:0 22px 50px rgba(80,40,15,.28), inset 0 0 0 1px rgba(255,205,140,.16);
+  }
+  .slothead{display:flex;justify-content:space-between;align-items:center;color:#ffd9a8;font-size:10px;letter-spacing:.2em;padding:0 4px 10px}
+  .slothead .badge{border:1px solid rgba(255,217,168,.3);border-radius:999px;padding:4px 8px;background:rgba(255,217,168,.08)}
+  .reels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .reel{
+    background:linear-gradient(180deg,#fffaf0,#ffe9cc);border:2px solid #f1d3a8;border-radius:14px;
+    min-height:98px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    padding:10px 6px;text-align:center;box-shadow:inset 0 1px 0 #fff,0 6px 14px rgba(0,0,0,.22);
+  }
+  .reel .emoji{font-size:26px}
+  .reel .name{font-size:12px;font-weight:800;color:#5a3418;line-height:1.3;word-break:break-all}
+  .reel.spin .name{filter:blur(.6px);opacity:.7}
+  .reel.spin .emoji{animation:jig .16s infinite}
+  @keyframes jig{50%{transform:translateY(2px) rotate(4deg)}}
+
+  .btn{
+    appearance:none;border:0;border-radius:15px;padding:15px 18px;font-family:inherit;
+    font-size:16px;font-weight:900;cursor:pointer;width:100%;letter-spacing:.06em;
+    background:linear-gradient(180deg,#ffd27a,#f0a33d);color:#3a1c0c;
+    box-shadow:0 6px 0 #a8641c,0 14px 24px rgba(120,70,20,.2);
+    transition:transform .08s,box-shadow .08s;
+  }
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #a8641c}
+  .btn.ghost{
+    background:#fff8ee;color:#7a5a3e;border:1px solid #efd8bd;box-shadow:none;
+    font-size:13px;padding:12px;font-weight:700;
+  }
+  .btn.ghost:active{transform:none}
+  .rollbtn{margin-top:14px}
+
+  /* ---------- 预览卡 ---------- */
+  .preview{
+    background:var(--card);border:1px solid var(--line);border-radius:24px;
+    padding:22px 18px;box-shadow:var(--shadow);text-align:center;position:relative;overflow:hidden;
+  }
+  .preview::before{
+    content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 50% 0%,#fff0d9,transparent 70%);
+    pointer-events:none;
+  }
+  .preview .pe{font-size:64px;line-height:1;position:relative;filter:drop-shadow(0 8px 14px rgba(180,100,30,.18))}
+  .preview h2{margin:14px 0 0;font-size:26px;position:relative}
+  .preview .tags{justify-content:center;margin-top:10px;position:relative}
+  .preview .tip{margin:14px auto 0;max-width:28em;color:var(--muted);font-size:12px;line-height:1.7;position:relative}
+  .preview .actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:18px;position:relative}
+
+  .tag{
+    display:inline-block;font-size:11px;color:var(--brand-deep);background:#ffe9d8;
+    border:1px solid #ffd3b8;border-radius:999px;padding:3px 8px;font-weight:700;margin:2px;
+  }
+
+  /* ---------- 做菜 HUD ---------- */
+  .cookbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 12px}
+  .dots{display:flex;gap:6px}
+  .dots i{width:26px;height:5px;border-radius:99px;background:#efdac2;transition:background .2s}
+  .dots i.done{background:var(--brand)}
+  .dots i.now{background:var(--gold)}
+  .score{font-size:11px;color:var(--muted);letter-spacing:.08em}
+  .score b{color:var(--brand-deep);font-size:17px;font-variant-numeric:tabular-nums}
+
+  .stagecard{
+    background:var(--card);border:1px solid var(--line);border-radius:24px;
+    box-shadow:var(--shadow);padding:20px 18px;min-height:330px;position:relative;
+  }
+  .dishhead{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px dashed #efdbc5;margin-bottom:16px}
+  .dishhead .de{font-size:32px;flex:0 0 auto}
+  .dishhead h3{margin:0;font-size:18px;line-height:1.25}
+  .dishhead p{margin:4px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5}
+  .prompt{font-size:15px;font-weight:900;margin:0 0 5px;line-height:1.4}
+  .subprompt{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 14px}
+
+  .chips{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .chipbtn{
+    appearance:none;border:1px solid #ecd7bf;background:#fffaf2;border-radius:14px;
+    padding:13px 10px;font-family:inherit;font-size:13.5px;font-weight:700;color:#4f3826;
+    cursor:pointer;transition:transform .12s,background .12s,border-color .12s;
+    display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;
+  }
+  .chipbtn:active{transform:scale(.97)}
+  .chipbtn.picked{background:#e8f4e3;border-color:#b9d8ae;color:#3d6138;opacity:.7;cursor:default}
+  .chipbtn.wrong{animation:shakeX .3s;background:#ffe4e0;border-color:#f3b6ab;color:#a93b28}
+  @keyframes shakeX{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .pickcount{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;color:var(--muted)}
+  .pickcount b{color:var(--brand-deep)}
+
+  /* 火候 */
+  .heat{position:relative;height:44px;border-radius:14px;background:#f6e7d4;border:1px solid #ecd4b8;margin:18px 0 10px;overflow:hidden}
+  .heat .zone{
+    position:absolute;top:0;bottom:0;background:linear-gradient(180deg,rgba(79,122,74,.25),rgba(79,122,74,.42));
+    border-left:2px solid #4f7a4a;border-right:2px solid #4f7a4a;
+  }
+  .heat .zone::after{content:"PERFECT";position:absolute;left:50%;top:4px;transform:translateX(-50%);font-size:8px;letter-spacing:.12em;color:#3f6239;font-weight:800}
+  .heat .needle{
+    position:absolute;top:-4px;bottom:-4px;width:4px;border-radius:2px;background:var(--brand);
+    box-shadow:0 0 10px rgba(226,84,47,.6);transform:translateX(-50%);left:0;
+  }
+  .heat.hit{animation:heatHit .3s}
+  @keyframes heatHit{50%{background:#e2f0dc}}
+  .heatmiss{animation:heatMiss .3s}
+  @keyframes heatMiss{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .roundspan{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px}
+
+  /* 调味 */
+  .season{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .seasonbtn{
+    appearance:none;border:1px solid #ecd7bf;background:#fffaf2;border-radius:14px;padding:16px 10px;
+    font-family:inherit;font-size:14px;font-weight:800;color:#4f3826;cursor:pointer;
+  }
+  .seasonbtn.correct{background:#e8f4e3;border-color:#9dcb91;color:#365c31}
+  .seasonbtn.wrong{background:#ffe4e0;border-color:#f3b6ab;color:#a93b28}
+
+  /* 装盘 */
+  .platewrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .plate{
+    width:170px;height:170px;border-radius:50%;position:relative;
+    background:radial-gradient(circle at 50% 45%,#fffdf8 0%,#f2e4d2 62%,#e3cdb2 100%);
+    border:6px solid #fffdf8;box-shadow:0 12px 30px rgba(140,90,40,.18),0 0 0 1px #e7d2ba;
+  }
+  .plate::after{content:"";position:absolute;inset:16px;border-radius:50%;border:1px dashed #e4cdb4}
+  .plate .piece{position:absolute;font-size:22px;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.12))}
+  .timer{font-size:12px;color:var(--muted);letter-spacing:.08em}
+  .timer b{color:var(--brand-deep);font-variant-numeric:tabular-nums}
+  .tapbig{font-size:18px;padding:16px}
+
+  .feedback{min-height:22px;text-align:center;font-size:12.5px;font-weight:800;color:var(--brand-deep);margin-top:12px}
+  .feedback.good{color:#3f6a3a}
+  .feedback.bad{color:#b23b28}
+
+  /* 结果 */
+  .result{background:var(--card);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);padding:26px 20px;text-align:center;position:relative;overflow:hidden}
+  .result .glow{position:absolute;inset:-40% -20% auto;height:280px;background:radial-gradient(circle,#ffe7b5,transparent 65%);opacity:.8;pointer-events:none}
+  .result .re{font-size:66px;position:relative;line-height:1}
+  .stars{font-size:30px;letter-spacing:6px;color:#efb53d;margin-top:8px;position:relative}
+  .stars .off{color:#e6d8c5}
+  .result h2{margin:10px 0 0;font-size:24px;position:relative}
+  .result .rscore{font-size:13px;color:var(--muted);margin-top:6px;position:relative}
+  .result .rscore b{color:var(--brand-deep);font-size:20px}
+  .result .comment{margin:14px auto 0;max-width:26em;font-size:13px;line-height:1.7;color:#6a523d;position:relative}
+  .result .actions{display:grid;gap:9px;margin-top:20px;position:relative}
+  .steps-review{text-align:left;margin-top:18px;border-top:1px dashed #efdbc5;padding-top:14px;position:relative}
+  .steps-review h4{margin:0 0 8px;font-size:11px;letter-spacing:.16em;color:var(--muted)}
+  .steps-review ol{margin:0;padding-left:20px;font-size:12.5px;line-height:1.8;color:#5e4938}
+  .steps-review li::marker{color:var(--brand);font-weight:800}
+  .newtag{display:inline-block;margin-top:8px;font-size:10px;letter-spacing:.12em;color:#3f6a3a;background:#e8f4e3;border:1px solid #b9d8ae;border-radius:999px;padding:4px 9px;position:relative}
+
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+  .confetti i{position:absolute;width:8px;height:8px;border-radius:2px;will-change:transform,opacity}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#2d2016;color:#fff4e4;font-size:12px;padding:10px 16px;border-radius:999px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:90;white-space:nowrap;
+  }
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:360px){
+    .chips,.season{grid-template-columns:1fr}
+    .reel{min-height:86px}
+    .reel .name{font-size:11px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">
+      <div class="wok">🍳</div>
+      <div>厨房乱斗<small>COOK &amp; CHAOS</small></div>
+    </div>
+    <div class="hud">
+      <div class="dex">图鉴 <b id="dexNum">0</b>/<span id="dexTotal">64</span></div>
+      <button class="sound" id="soundBtn" type="button" title="音效">♪</button>
+    </div>
+  </header>
+
+  <!-- 开始 -->
+  <section class="screen active" id="screenSlot">
+    <div class="hero">
+      <h1>摇一道菜，<br><em>然后把它做出来</em></h1>
+      <p>备菜、控火候、调味、装盘。四关都过了，这盘菜才算真正出锅。</p>
+    </div>
+    <div class="slotbox">
+      <div class="slothead"><span>TODAY'S RECIPE</span><span class="badge" id="poolBadge">64 道菜</span></div>
+      <div class="reels">
+        <div class="reel" id="reel0"><span class="emoji">🥟</span><span class="name">准备中</span></div>
+        <div class="reel" id="reel1"><span class="emoji">🍳</span><span class="name">准备中</span></div>
+        <div class="reel" id="reel2"><span class="emoji">🍲</span><span class="name">准备中</span></div>
+      </div>
+    </div>
+    <button class="btn rollbtn" id="rollBtn" type="button">🎰 摇一道菜</button>
+  </section>
+
+  <!-- 预览 -->
+  <section class="screen" id="screenPreview">
+    <div class="preview">
+      <div class="pe" id="pvEmoji">🍳</div>
+      <h2 id="pvName">菜名</h2>
+      <div class="tags" id="pvTags"></div>
+      <p class="tip" id="pvTip"></p>
+      <div class="actions">
+        <button class="btn" id="startBtn" type="button">开始做菜</button>
+        <button class="btn ghost" id="rerollBtn" type="button">换一道</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 做菜 -->
+  <section class="screen" id="screenCook">
+    <div class="cookbar">
+      <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+      <div class="score">得分 <b id="scoreNum">0</b></div>
+    </div>
+    <div class="stagecard">
+      <div class="dishhead">
+        <div class="de" id="cookEmoji">🍳</div>
+        <div>
+          <h3 id="cookName">菜名</h3>
+          <p id="cookStep">步骤提示</p>
+        </div>
+      </div>
+      <div id="stageArea"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </section>
+
+  <!-- 结果 -->
+  <section class="screen" id="screenResult">
+    <div class="result">
+      <div class="glow"></div>
+      <div class="re" id="resEmoji">🍳</div>
+      <div class="stars" id="resStars">★★★</div>
+      <h2 id="resName">菜名</h2>
+      <div class="rscore">本局得分 <b id="resScore">0</b> / 100</div>
+      <p class="comment" id="resComment"></p>
+      <div id="newTag"></div>
+      <div class="actions">
+        <button class="btn" id="againBtn" type="button">再做一道</button>
+        <button class="btn ghost" id="mealLink" type="button">去菜谱页看看</button>
+      </div>
+      <div class="steps-review">
+        <h4>这道菜的完整做法</h4>
+        <ol id="resSteps"></ol>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="confetti" id="confetti"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const RECIPES = [{"name": "番茄炒蛋", "emoji": "🍅", "tags": ["家常", "快手", "下饭"], "ingredients": ["番茄", "鸡蛋", "葱花", "盐", "糖少许"], "steps": ["鸡蛋加一点盐打散，热油炒到刚凝固盛出。", "番茄切块下锅炒出汁。", "倒回鸡蛋，加盐和一小撮糖。", "撒葱花出锅。"], "note": "想汤汁多就加两勺水；拌饭一绝。"}, {"name": "饺子", "emoji": "🥟", "tags": ["主食", "管饱", "可冷冻"], "ingredients": ["饺子皮", "猪肉馅", "白菜或韭菜", "姜末", "生抽", "香油"], "steps": ["菜切碎杀水，和肉馅、姜末、生抽、香油拌上劲。", "包好后水开下锅。", "点两次凉水，饺子浮起就熟。", "蘸醋和辣椒油。"], "note": "冷冻饺子不用解冻，水开直接煮，多煮一分钟。"}, {"name": "炒粉", "emoji": "🍜", "tags": ["主食", "锅气", "夜宵"], "ingredients": ["河粉", "鸡蛋", "豆芽", "青菜", "生抽", "老抽", "蒜"], "steps": ["河粉提前抖散，避免粘成团。", "热锅下蛋炒散，再下蒜末和配菜。", "下河粉，大火快炒。", "生抽调味、老抽上色，出锅前淋一点油。"], "note": "锅一定要够热，粉才不容易断；豆芽最后放，保持脆。"}, {"name": "蛋炒饭", "emoji": "🍚", "tags": ["快手", "剩饭救星", "管饱"], "ingredients": ["隔夜米饭", "鸡蛋", "葱花", "盐", "生抽"], "steps": ["米饭提前抓散。", "热油炒蛋，盛出。", "下米饭大火炒到粒粒分明。", "倒回鸡蛋，加盐和生抽，撒葱花。"], "note": "米饭太湿就多炒一会儿；加一勺猪油更香。"}, {"name": "牛肉面", "emoji": "🍲", "tags": ["汤面", "暖胃", "管饱"], "ingredients": ["面条", "牛肉", "青菜", "葱姜", "生抽", "八角"], "steps": ["牛肉焯水，加葱姜八角炖 1 小时。", "另起锅煮面。", "面快熟时放青菜。", "浇牛肉汤，铺牛肉片，撒葱花。"], "note": "想快就用卤牛肉片和现成高汤；痛风人群少喝浓肉汤。"}, {"name": "麻辣烫", "emoji": "🌶️", "tags": ["重口", "自选", "外卖"], "ingredients": ["各种蔬菜", "豆制品", "肉丸", "方便面或粉丝", "麻辣底料", "芝麻酱"], "steps": ["先煮耐煮的根茎和丸子。", "再下叶菜和面。", "底料用汤化开，或直接蘸芝麻酱。", "怕辣就选清汤加蒜泥。"], "note": "丸子类加工食品多，多拿蔬菜和豆制品更均衡。"}, {"name": "黄焖鸡米饭", "emoji": "🍗", "tags": ["下饭", "外卖", "管饱"], "ingredients": ["鸡腿肉", "香菇", "青椒", "土豆", "生抽", "冰糖", "姜"], "steps": ["鸡腿切块，焯水或直接煎香。", "加姜、冰糖、生抽炒上色。", "下香菇土豆，加热水炖 20 分钟。", "放青椒收汁，配米饭。"], "note": "汤汁别收太干，拌饭才是灵魂。"}, {"name": "煲仔饭", "emoji": "🍛", "tags": ["锅巴", "广式", "管饱"], "ingredients": ["大米", "腊肠或腊肉", "青菜", "鸡蛋", "生抽", "蚝油", "香油"], "steps": ["米泡 30 分钟，砂锅刷油。", "米加水煮到收水，铺腊味。", "沿锅边淋油，小火焖出锅巴。", "打一个蛋，放烫好的青菜，淋酱汁。"], "note": "火要小，听到滋滋声再焖两分钟；别把锅烧糊。"}, {"name": "烧烤", "emoji": "🍢", "tags": ["聚会", "重口", "夜宵"], "ingredients": ["肉串", "茄子", "韭菜", "馒头片", "蒜蓉", "孜然", "辣椒面"], "steps": ["先点肉和蔬菜搭配。", "茄子、韭菜、馒头片很吸味。", "怕咸就让少放酱。", "配一瓶无糖茶解腻。"], "note": "烤焦的部分不要吃；夜宵别吃太撑。"}, {"name": "火锅", "emoji": "🍲", "tags": ["聚会", "自选", "冬天"], "ingredients": ["牛羊肉片", "豆腐", "菌菇", "绿叶菜", "粉条", "蘸料"], "steps": ["先下菌菇和根茎类煮汤。", "肉片涮到变色就捞。", "绿叶菜最后烫。", "蘸料少放油和盐。"], "note": "汤底煮太久嘌呤高，痛风人群少喝汤。"}, {"name": "螺蛳粉", "emoji": "🍜", "tags": ["重口", "臭味", "夜宵"], "ingredients": ["螺蛳粉", "酸笋", "腐竹", "花生", "青菜", "辣油"], "steps": ["米粉先煮软，换水。", "加汤料和酸笋煮开。", "放腐竹、花生、青菜。", "辣油按自己承受度加。"], "note": "盐分高，汤别全喝完；吃完开窗通风。"}, {"name": "兰州拉面", "emoji": "🍜", "tags": ["汤面", "清真", "快手"], "ingredients": ["拉面", "牛肉片", "白萝卜", "香菜", "蒜苗", "辣椒油"], "steps": ["点毛细或二细，按自己口感。", "先喝一口清汤。", "加醋和辣椒油调味。", "配一小碟牛肉。"], "note": "汤咸就少喝；香菜不吃提前说。"}, {"name": "青椒肉丝", "emoji": "🫑", "tags": ["家常", "快手", "下饭"], "ingredients": ["猪里脊", "青椒", "姜蒜", "生抽", "淀粉", "盐"], "steps": ["肉切丝，加生抽、淀粉抓匀腌 10 分钟。", "青椒切丝，热锅少油先煸一下盛出。", "下姜蒜和肉丝滑散，变色后倒回青椒。", "加盐大火翻两下出锅。"], "note": "肉丝先腌再炒才嫩；青椒别炒太久，保持脆感。"}, {"name": "鱼香肉丝", "emoji": "🥢", "tags": ["川味", "下饭", "酸甜微辣"], "ingredients": ["猪里脊", "木耳", "胡萝卜", "青椒", "泡椒", "糖醋汁"], "steps": ["肉丝腌制，木耳、胡萝卜、青椒切丝。", "调一碗糖醋汁：糖、醋、生抽、淀粉、水。", "炒香泡椒和姜蒜，下肉丝和配菜。", "倒糖醋汁，大火收浓。"], "note": "糖醋比例按口味调，先少放糖；木耳提前泡发。"}, {"name": "宫保鸡丁", "emoji": "🍗", "tags": ["经典", "微辣", "下饭"], "ingredients": ["鸡腿肉", "花生米", "干辣椒", "花椒", "葱段", "糖醋汁"], "steps": ["鸡腿肉切丁，加生抽、淀粉腌一下。", "花生米小火炸香或烤香。", "炒香干辣椒、花椒和葱段，下鸡丁。", "倒糖醋汁，最后放花生翻匀。"], "note": "花生最后放才脆；不吃辣就少放干辣椒。"}, {"name": "回锅肉", "emoji": "🥓", "tags": ["川味", "重口", "下饭"], "ingredients": ["五花肉", "蒜苗", "豆瓣酱", "豆豉", "姜", "生抽"], "steps": ["五花肉冷水下锅，加姜煮 20 分钟，捞出切薄片。", "锅里少油，下肉片煸到微卷。", "加豆瓣酱、豆豉炒出红油。", "下蒜苗段，大火炒断生。"], "note": "豆瓣酱很咸，生抽少放；肉片切薄一点更好吃。"}, {"name": "麻婆豆腐", "emoji": "🌶️", "tags": ["麻辣", "下饭", "便宜"], "ingredients": ["嫩豆腐", "牛肉末", "豆瓣酱", "花椒粉", "蒜苗", "淀粉水"], "steps": ["豆腐切块，盐水里泡 5 分钟。", "炒散肉末，加豆瓣酱炒出红油。", "加水下豆腐，小火煮 3 分钟。", "淀粉水勾芡，撒花椒粉和蒜苗。"], "note": "豆腐别用铲子翻，晃锅更不容易碎。"}, {"name": "酸辣土豆丝", "emoji": "🥔", "tags": ["快手", "酸辣", "家常"], "ingredients": ["土豆", "干辣椒", "蒜", "醋", "盐", "花椒"], "steps": ["土豆切细丝，清水冲掉淀粉。", "热油爆香花椒、干辣椒和蒜。", "下土豆丝大火快炒。", "沿锅边淋醋，加盐出锅。"], "note": "土豆丝泡水才脆；醋分两次放更香。"}, {"name": "蒜蓉西兰花", "emoji": "🥦", "tags": ["清淡", "少油", "快手"], "ingredients": ["西兰花", "蒜", "盐", "蚝油", "油"], "steps": ["西兰花切小朵，盐水泡 10 分钟。", "水开加一点盐和油，焯 1 分钟捞出。", "爆香蒜末，下西兰花大火炒。", "加盐和一点蚝油。"], "note": "焯水别太久，保持脆绿；蒜末分两次放更香。"}, {"name": "手撕包菜", "emoji": "🥬", "tags": ["快手", "下饭", "便宜"], "ingredients": ["包菜", "干辣椒", "蒜", "醋", "生抽", "盐"], "steps": ["包菜用手撕成小块，洗净沥干。", "热油爆香蒜和干辣椒。", "下包菜大火快炒。", "沿锅边淋醋，加盐和一点生抽。"], "note": "包菜要沥干水，不然炒出来是煮的。"}, {"name": "干煸四季豆", "emoji": "🫛", "tags": ["干香", "下饭", "微辣"], "ingredients": ["四季豆", "肉末", "干辣椒", "花椒", "蒜", "生抽"], "steps": ["四季豆去筋，掰段，擦干水。", "多一点油，中小火煸到表皮起皱盛出。", "炒香肉末、干辣椒、花椒和蒜。", "倒回四季豆，加生抽和盐翻匀。"], "note": "四季豆一定要炒熟透，半生的容易引起不适。"}, {"name": "红烧肉", "emoji": "🍖", "tags": ["硬菜", "下饭", "费时"], "ingredients": ["五花肉", "冰糖", "生抽", "老抽", "八角", "姜", "料酒"], "steps": ["五花肉切块，冷水下锅焯水。", "小火炒冰糖到焦糖色，下肉块裹色。", "加姜、八角、料酒、生抽老抽和热水。", "小火炖 1 小时，最后大火收汁。"], "note": "炒糖色别炒糊，苦了就重新来；一次别吃太多。"}, {"name": "清蒸鲈鱼", "emoji": "🐟", "tags": ["清淡", "高蛋白", "宴客"], "ingredients": ["鲈鱼", "葱姜", "蒸鱼豉油", "料酒", "油"], "steps": ["鱼处理干净，两面划刀，抹料酒和姜片。", "水开上锅，大火蒸 8～10 分钟。", "倒掉盘中腥水，铺葱丝。", "淋蒸鱼豉油，浇一勺热油。"], "note": "鱼眼凸出、鱼肉刚离骨就熟了，别蒸老。"}, {"name": "可乐鸡翅", "emoji": "🥤", "tags": ["甜口", "快手", "小孩爱吃"], "ingredients": ["鸡翅中", "可乐", "生抽", "老抽", "姜", "料酒"], "steps": ["鸡翅两面划刀，焯水或煎到微黄。", "加姜、料酒、生抽、老抽。", "倒可乐没过鸡翅，中小火焖 15 分钟。", "大火收汁到浓稠。"], "note": "可乐本身很甜，不用再加糖；收汁时勤翻动。"}, {"name": "水煮牛肉", "emoji": "🌶️", "tags": ["麻辣", "下饭", "硬菜"], "ingredients": ["牛里脊", "豆芽", "莴笋", "豆瓣酱", "干辣椒", "花椒", "蒜"], "steps": ["牛肉逆纹切薄片，加生抽、淀粉、蛋清腌 15 分钟。", "豆芽和莴笋焯熟垫碗底。", "炒香豆瓣酱和蒜，加水煮开。", "下牛肉片滑熟，连汤倒入碗中，撒干辣椒花椒，浇热油。"], "note": "牛肉别煮久，变色就捞；怕辣少放干辣椒。"}, {"name": "水煮肉片", "emoji": "🥩", "tags": ["麻辣", "下饭", "川味"], "ingredients": ["猪里脊", "白菜", "豆芽", "豆瓣酱", "干辣椒", "花椒", "蒜"], "steps": ["肉切薄片，加盐、淀粉、蛋清腌一下。", "白菜豆芽炒断生垫底。", "豆瓣酱炒出红油，加水煮开。", "下肉片滑熟倒盆里，撒辣椒花椒蒜末，淋热油。"], "note": "最后那勺油要够热才香；肉片切薄一点。"}, {"name": "水煮鱼", "emoji": "🐟", "tags": ["麻辣", "聚会", "硬菜"], "ingredients": ["黑鱼或草鱼", "豆芽", "豆瓣酱", "干辣椒", "花椒", "姜蒜", "蛋清"], "steps": ["鱼片加盐、蛋清、淀粉腌 15 分钟。", "鱼骨煎一下，加水和豆瓣酱煮汤。", "豆芽焯熟垫盆底。", "鱼片下汤滑熟，撒辣椒花椒，浇热油。"], "note": "鱼刺要挑干净；鱼片别久煮，容易碎。"}, {"name": "白灼菜心", "emoji": "🥬", "tags": ["清淡", "少油", "快手"], "ingredients": ["菜心", "蒜", "生抽", "蒸鱼豉油", "油"], "steps": ["水开加一点盐和油。", "菜心下锅焯 1 分钟，捞出摆盘。", "铺蒜丝，淋生抽和蒸鱼豉油。", "浇一勺热油。"], "note": "焯水时间别长，菜心发黄就不好吃了。"}, {"name": "白灼虾", "emoji": "🦐", "tags": ["清淡", "高蛋白", "快手"], "ingredients": ["鲜虾", "姜", "葱", "料酒", "生抽", "醋"], "steps": ["虾剪须开背去虾线。", "水开加姜葱料酒，下虾煮到变红。", "捞出过一下凉水，肉更弹。", "姜末、生抽、醋调蘸汁。"], "note": "虾变红卷曲就熟了，别煮老；海鲜过敏者不吃。"}, {"name": "蘸水菜", "emoji": "🥗", "tags": ["清淡", "蔬菜多", "云南吃法"], "ingredients": ["时令蔬菜", "豆腐", "土豆", "辣椒面", "蒜", "香菜", "生抽", "醋"], "steps": ["蔬菜洗净切好，耐煮的先下锅。", "清水加一点盐，把菜煮熟捞出。", "辣椒面、蒜末、香菜、生抽、醋调蘸水。", "想吃辣就多放一勺蘸水。"], "note": "蘸水盐分高，少蘸一点；蔬菜种类越多越好。"}, {"name": "上汤娃娃菜", "emoji": "🥬", "tags": ["清淡", "汤菜", "鲜"], "ingredients": ["娃娃菜", "皮蛋", "咸蛋", "蒜", "高汤或清水", "枸杞"], "steps": ["娃娃菜切条，蒜切片。", "炒香蒜片，加皮蛋咸蛋略炒。", "加高汤煮开，下娃娃菜煮软。", "加盐和枸杞，连汤装盘。"], "note": "咸蛋本身有咸味，盐最后少放。"}, {"name": "蒜蓉粉丝蒸娃娃菜", "emoji": "🧄", "tags": ["蒸菜", "清淡", "下饭"], "ingredients": ["娃娃菜", "粉丝", "蒜", "蒸鱼豉油", "油", "小米辣"], "steps": ["粉丝泡软铺盘底，娃娃菜切条铺上。", "蒜蓉分一半炒香，和生蒜混合。", "铺在娃娃菜上，水开蒸 8 分钟。", "淋蒸鱼豉油，浇热油。"], "note": "蒜蓉一半生一半熟，味道更有层次。"}, {"name": "白切鸡", "emoji": "🍗", "tags": ["清淡", "宴客", "高蛋白"], "ingredients": ["三黄鸡", "姜", "葱", "盐", "油"], "steps": ["整鸡冷水下锅，加姜葱，水开转小火浸 25 分钟。", "捞出立刻放冰水，皮更爽。", "斩件摆盘。", "姜葱剁蓉，加盐，浇热油做蘸料。"], "note": "鸡要浸熟但别煮老，筷子扎大腿没有血水即可。"}, {"name": "关东煮", "emoji": "🍢", "tags": ["暖胃", "自选", "夜宵"], "ingredients": ["白萝卜", "魔芋结", "鱼丸", "豆腐", "海带", "昆布汤", "生抽"], "steps": ["白萝卜切厚片，先煮 15 分钟。", "加海带和昆布汤底。", "下魔芋、鱼丸、豆腐，煮 10 分钟。", "加生抽调味，连汤吃。"], "note": "鱼丸类加工食品多，多放萝卜和豆腐。"}, {"name": "酸汤肥牛", "emoji": "🍲", "tags": ["酸辣", "开胃", "下饭"], "ingredients": ["肥牛卷", "金针菇", "黄灯笼椒酱", "醋", "蒜", "姜"], "steps": ["金针菇焯熟垫碗底。", "炒香蒜姜和黄灯笼椒酱。", "加水煮开，加醋调酸。", "下肥牛烫到变色，连汤倒入碗中。"], "note": "肥牛很快熟，久煮会老；酸度按口味加醋。"}, {"name": "凉拌黄瓜", "emoji": "🥒", "tags": ["凉菜", "快手", "解腻"], "ingredients": ["黄瓜", "蒜", "醋", "生抽", "香油", "小米辣"], "steps": ["黄瓜拍裂切段，加一点盐腌 5 分钟。", "倒掉腌出的水。", "加蒜末、醋、生抽、香油。", "拌匀，喜欢辣加小米辣。"], "note": "现拌现吃最脆，别放太久出水。"}, {"name": "凉拌木耳", "emoji": "🍄", "tags": ["凉菜", "爽口", "解腻"], "ingredients": ["干木耳", "蒜", "小米辣", "醋", "生抽", "香菜"], "steps": ["木耳提前泡发，去根撕小朵。", "水开焯 2 分钟，捞出过凉水。", "加蒜末、小米辣、醋、生抽。", "撒香菜拌匀。"], "note": "木耳不要泡太久，泡发后尽快吃；隔夜的别吃。"}, {"name": "番茄鱼片", "emoji": "🍅", "tags": ["酸甜", "清淡", "高蛋白"], "ingredients": ["黑鱼片", "番茄", "金针菇", "姜", "番茄膏", "盐"], "steps": ["鱼片加盐、淀粉、蛋清腌 10 分钟。", "番茄炒软，加番茄膏和水煮开。", "下金针菇煮 3 分钟。", "下鱼片滑熟，加盐调味。"], "note": "鱼片最后下，变色就关火，汤才清。"}, {"name": "鸡蛋羹", "emoji": "🥚", "tags": ["清淡", "易消化", "快手"], "ingredients": ["鸡蛋", "温水", "盐", "生抽", "香油", "葱花"], "steps": ["鸡蛋打散，加 1.5 倍温水和一点盐。", "过筛去泡沫，盖保鲜膜扎孔。", "水开中小火蒸 10 分钟。", "淋生抽和香油，撒葱花。"], "note": "水和蛋比例约 1.5:1，火太大容易起蜂窝。"}, {"name": "红枣桂圆小米粥", "emoji": "🥣", "tags": ["补血", "暖胃", "易消化"], "ingredients": ["小米", "红枣", "桂圆干", "枸杞", "红糖少许"], "steps": ["小米洗净，清水浸泡 20 分钟。", "红枣去核，和桂圆一起下锅。", "小火煮 25 分钟至米开花，关火前放枸杞。", "喜欢甜口加一小块红糖，不要放多。"], "note": "桂圆偏温，容易上火、口干舌燥时少放；血糖高的人不加糖。"}, {"name": "菠菜猪肝汤", "emoji": "🥬", "tags": ["补铁", "补血", "快手"], "ingredients": ["猪肝", "菠菜", "姜片", "枸杞", "料酒", "盐"], "steps": ["猪肝切薄片，清水泡 20 分钟去血水，加料酒和姜片腌一下。", "水开下姜片和猪肝，煮到变色。", "放菠菜烫软，加盐和枸杞，立刻关火。"], "note": "猪肝胆固醇和维生素 A 都高，不要天天吃；痛风急性期、血脂高的人少吃。"}, {"name": "当归生姜羊肉汤", "emoji": "🍲", "tags": ["暖胃", "驱寒", "温补"], "ingredients": ["羊肉", "当归片", "生姜", "红枣", "料酒", "盐"], "steps": ["羊肉冷水下锅焯水，撇去浮沫。", "羊肉、姜片、当归、红枣一起入砂锅。", "加足热水，小火炖 1.5 小时。", "出锅前加盐，撇掉表面浮油。"], "note": "体质偏热、正在上火、感冒发热时不要喝；孕期吃当归前先问医生。"}, {"name": "山药南瓜粥", "emoji": "🎃", "tags": ["健脾", "养胃", "清淡"], "ingredients": ["铁棍山药", "南瓜", "大米", "小米"], "steps": ["大米小米洗净，南瓜去皮切块。", "山药戴手套去皮切段，避免手痒。", "全部下锅，加水煮 30 分钟。", "用勺子压碎南瓜，让粥更绵。"], "note": "山药黏液可能刺激皮肤，处理时戴手套；血糖高的人控制南瓜量。"}, {"name": "黑芝麻核桃糊", "emoji": "🥜", "tags": ["补血", "润燥", "养发"], "ingredients": ["黑芝麻", "核桃仁", "糯米粉", "牛奶或水", "冰糖少许"], "steps": ["黑芝麻小火炒香，核桃烤香。", "和糯米粉一起打成细粉。", "取两勺粉，用热牛奶冲开，边冲边搅。", "小火煮 2 分钟至浓稠。"], "note": "热量不低，一次一小碗；腹泻时少吃。"}, {"name": "姜枣茶", "emoji": "🫖", "tags": ["暖胃", "驱寒", "简单"], "ingredients": ["生姜", "红枣", "红糖"], "steps": ["生姜切 3～4 片，红枣去核。", "加水煮 10 分钟。", "关火加红糖，趁温热喝。"], "note": "早上喝比晚上合适；胃溃疡、容易反酸的人别空腹喝浓姜茶。"}, {"name": "番茄牛腩", "emoji": "🍅", "tags": ["补铁", "开胃", "高蛋白"], "ingredients": ["牛腩", "番茄", "洋葱", "姜", "番茄膏", "盐"], "steps": ["牛腩切块焯水，洗净浮沫。", "炒香洋葱和番茄，加一勺番茄膏。", "下牛腩和热水，小火炖 1.5 小时。", "加盐收汁，留一点汤拌饭。"], "note": "痛风人群控制量；炖的时候少放油。"}, {"name": "红豆花生汤", "emoji": "🫘", "tags": ["补血", "养颜", "甜汤"], "ingredients": ["红豆", "花生", "红枣", "红糖"], "steps": ["红豆和花生提前泡 4 小时。", "加水煮 40 分钟至软烂。", "放红枣再煮 10 分钟。", "关火加少量红糖。"], "note": "花生过敏者不要吃；控糖的人少放糖。"}, {"name": "小米南瓜蒸蛋", "emoji": "🍳", "tags": ["养胃", "高蛋白", "清淡"], "ingredients": ["鸡蛋", "南瓜泥", "温水", "盐", "香油"], "steps": ["鸡蛋打散，加 1.5 倍温水。", "拌入南瓜泥，过筛去泡。", "盖保鲜膜扎孔，水开蒸 10 分钟。", "出锅淋几滴香油。"], "note": "鸡蛋过敏者不吃；蒸的时候火不要太大，避免起蜂窝。"}, {"name": "桂圆红枣鸡蛋糖水", "emoji": "🍮", "tags": ["补血", "暖身", "女生"], "ingredients": ["桂圆干", "红枣", "鸡蛋", "枸杞", "红糖"], "steps": ["红枣去核，和桂圆加水煮 15 分钟。", "打入鸡蛋，煮成荷包蛋。", "加枸杞和红糖，再煮 2 分钟。"], "note": "容易上火、感冒发热时不要喝；血糖高的人不加糖。"}, {"name": "五红汤", "emoji": "🫕", "tags": ["补血", "养颜", "经典"], "ingredients": ["红豆", "红皮花生", "红枣", "枸杞", "红糖"], "steps": ["红豆和花生提前泡 4 小时。", "加水煮 40 分钟至软烂。", "放红枣再煮 10 分钟。", "关火加枸杞和少量红糖。"], "note": "红糖别放多；血糖高的人不加糖，花生过敏者不吃。"}, {"name": "黄芪党参乌鸡汤", "emoji": "🐔", "tags": ["补气", "补血", "体虚"], "ingredients": ["乌鸡", "黄芪", "党参", "红枣", "姜片", "枸杞"], "steps": ["乌鸡焯水，洗净浮沫。", "药材冲洗，和乌鸡、姜片一起入锅。", "加足热水，小火炖 1.5 小时。", "关火前放枸杞，加盐。"], "note": "感冒发热、嗓子疼时不要喝；孕期和正在服药先问医生。"}, {"name": "猪肚鸡汤", "emoji": "🍲", "tags": ["暖胃", "健脾", "胡椒香"], "ingredients": ["猪肚", "鸡", "白胡椒粒", "姜片", "红枣", "盐"], "steps": ["猪肚用面粉和盐反复搓洗，焯水切条。", "鸡块焯水。", "猪肚、鸡、姜、白胡椒一起炖 1.5 小时。", "加红枣再煮 20 分钟，加盐。"], "note": "猪肚一定要洗干净；汤面上浮油可以撇掉。"}, {"name": "牛肉萝卜汤", "emoji": "🥣", "tags": ["补血", "暖胃", "高蛋白"], "ingredients": ["牛腩", "白萝卜", "姜", "葱", "料酒", "盐"], "steps": ["牛腩切块，冷水下锅焯水。", "加姜、葱、料酒和热水，小火炖 1 小时。", "白萝卜切块下锅，再炖 20 分钟。", "加盐，撒葱花。"], "note": "痛风人群少喝浓汤；萝卜别炖太久，留一点口感。"}, {"name": "桂圆莲子银耳羹", "emoji": "🍮", "tags": ["补血", "安神", "润燥"], "ingredients": ["银耳", "莲子", "桂圆干", "红枣", "冰糖"], "steps": ["银耳泡发撕小朵，莲子泡软。", "银耳加水煮 40 分钟到出胶。", "放莲子、红枣、桂圆再煮 20 分钟。", "加少量冰糖。"], "note": "银耳别隔夜放太久；血糖高的人少放糖。"}, {"name": "桑葚黑芝麻粥", "emoji": "🫐", "tags": ["补血", "润燥", "养发"], "ingredients": ["大米", "桑葚干", "黑芝麻", "红枣", "冰糖少许"], "steps": ["大米洗净，桑葚干冲洗。", "大米加水煮 25 分钟。", "放桑葚、红枣再煮 10 分钟。", "关火撒炒香的黑芝麻。"], "note": "桑葚偏凉，脾胃虚寒、容易腹泻时少吃。"}, {"name": "酒酿蛋", "emoji": "🥚", "tags": ["暖身", "补血", "女生"], "ingredients": ["酒酿", "鸡蛋", "枸杞", "红糖", "水"], "steps": ["水开下酒酿，煮 2 分钟。", "打散鸡蛋，沿锅边淋入。", "放枸杞和少量红糖。", "蛋花浮起就关火。"], "note": "含少量酒精，孕期、哺乳期和对酒精敏感的人不要吃。"}, {"name": "陈皮生姜水", "emoji": "🍵", "tags": ["暖胃", "理气", "简单"], "ingredients": ["陈皮", "生姜", "红糖少许"], "steps": ["陈皮冲洗，生姜切 3 片。", "加水煮 10 分钟。", "关火加一点红糖，温热喝。"], "note": "胃酸多、容易反酸的人别空腹喝；晚上少喝姜。"}, {"name": "白灼菠菜", "emoji": "🥬", "tags": ["补铁", "清淡", "快手"], "ingredients": ["菠菜", "蒜", "生抽", "香油", "盐"], "steps": ["菠菜洗净，根部切开。", "水开加一点盐，先下根再下叶，焯 1 分钟。", "捞出挤干水，切段摆盘。", "淋生抽、香油，撒蒜末。"], "note": "菠菜草酸高，焯水后再吃；肾结石人群控制量。"}, {"name": "山药排骨汤", "emoji": "🍲", "tags": ["健脾", "养胃", "家常"], "ingredients": ["排骨", "铁棍山药", "姜", "枸杞", "盐"], "steps": ["排骨冷水下锅焯水，洗净。", "加姜和热水，小火炖 40 分钟。", "山药去皮切段，下锅再炖 20 分钟。", "加盐和枸杞。"], "note": "山药戴手套削皮；汤面浮油可以撇掉。"}, {"name": "四神汤", "emoji": "🥣", "tags": ["健脾", "祛湿", "温和"], "ingredients": ["茯苓", "莲子", "山药", "芡实", "排骨或瘦肉", "姜"], "steps": ["药材冲洗，莲子去芯。", "排骨焯水。", "全部材料加姜和热水，小火炖 1.5 小时。", "加盐调味。"], "note": "感冒发热时先别喝；孕期或服药中先问医生。"}, {"name": "黑豆核桃粥", "emoji": "🫘", "tags": ["补血", "养发", "补肾"], "ingredients": ["黑豆", "核桃仁", "黑芝麻", "大米", "红枣"], "steps": ["黑豆提前泡 6 小时。", "黑豆和大米加水煮 40 分钟。", "放核桃、红枣再煮 15 分钟。", "关火撒黑芝麻。"], "note": "黑豆不易消化，胃弱的人少量吃；腹泻时少吃。"}, {"name": "鲫鱼豆腐汤", "emoji": "🐟", "tags": ["高蛋白", "清淡", "汤白"], "ingredients": ["鲫鱼", "嫩豆腐", "姜", "葱", "料酒", "盐"], "steps": ["鲫鱼擦干，两面煎到微黄。", "加姜和开水，大火煮 10 分钟至汤白。", "下豆腐块，再煮 5 分钟。", "加盐和葱花。"], "note": "鲫鱼刺多，喝汤时小心；煎鱼前擦干锅不容易破皮。"}, {"name": "清炖鸡汤", "emoji": "🍗", "tags": ["补气", "清淡", "家常"], "ingredients": ["土鸡", "姜", "红枣", "枸杞", "盐"], "steps": ["鸡块冷水下锅焯水。", "加姜片和热水，小火炖 1.5 小时。", "放红枣再炖 20 分钟。", "关火前放枸杞和盐。"], "note": "撇掉表面浮油更清爽；感冒发热时不要喝太补的汤。"}, {"name": "红枣蒸南瓜", "emoji": "🎃", "tags": ["健脾", "补血", "甜口"], "ingredients": ["南瓜", "红枣", "枸杞"], "steps": ["南瓜去皮切厚片，摆盘。", "红枣去核切条，铺在南瓜上。", "水开蒸 15 分钟。", "出锅撒枸杞。"], "note": "南瓜本身甜，控糖的人控制份量；红枣别放太多。"}];
+</script>
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var screen = {
+    slot: $("#screenSlot"),
+    preview: $("#screenPreview"),
+    cook: $("#screenCook"),
+    result: $("#screenResult")
+  };
+
+  function show(name) {
+    Object.keys(screen).forEach(function (k) { screen[k].classList.toggle("active", k === name); });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---------- 存档 ----------
+  var SAVE_KEY = "cook_chaos_v1";
+  var save = { cooked: [], best: {}, sound: true };
+  try {
+    var raw = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+    if (Array.isArray(raw.cooked)) save.cooked = raw.cooked;
+    if (raw.best && typeof raw.best === "object") save.best = raw.best;
+    if (raw.sound === false) save.sound = false;
+  } catch (e) {}
+  function persist() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
+  }
+  function updateDex() {
+    $("#dexNum").textContent = save.cooked.length;
+    $("#dexTotal").textContent = RECIPES.length;
+    $("#poolBadge").textContent = RECIPES.length + " 道菜";
+  }
+
+  // ---------- 音效 ----------
+  var actx = null;
+  function audio() {
+    if (!save.sound) return null;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      return actx;
+    } catch (e) { return null; }
+  }
+  function tone(freq, dur, type, vol, delay) {
+    var a = audio();
+    if (!a) return;
+    var t = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || "sine";
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.035, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function sfxTap() { tone(660, 0.05, "square", 0.02); }
+  function sfxGood() { tone(784, 0.08, "triangle", 0.03); tone(1046, 0.1, "sine", 0.025, 0.05); }
+  function sfxBad() { tone(200, 0.12, "sawtooth", 0.025); }
+  function sfxWin() { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, 0.16, "triangle", 0.035, i * 0.09); }); }
+
+  var soundBtn = $("#soundBtn");
+  soundBtn.classList.toggle("off", !save.sound);
+  soundBtn.addEventListener("click", function () {
+    save.sound = !save.sound;
+    soundBtn.classList.toggle("off", !save.sound);
+    persist();
+    if (save.sound) sfxTap();
+  });
+
+  // ---------- 通用 ----------
+  var state = {
+    dish: null,
+    stage: 0,
+    score: 0,
+    stageScore: [0, 0, 0, 0],
+    spinning: false,
+    timers: [],
+    intervals: []
+  };
+  function clearTimers() {
+    state.timers.forEach(clearTimeout);
+    state.timers = [];
+    state.intervals.forEach(clearInterval);
+    state.intervals = [];
+  }
+  function later(fn, ms) { var t = setTimeout(fn, ms); state.timers.push(t); return t; }
+  function every(fn, ms) { var t = setInterval(fn, ms); state.intervals.push(t); return t; }
+  function feedback(text, type) {
+    var el = $("#feedback");
+    el.textContent = text || "";
+    el.className = "feedback" + (type ? " " + type : "");
+  }
+  function toast(text) {
+    var el = $("#toast");
+    el.textContent = text;
+    el.classList.add("on");
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.remove("on"); }, 1600);
+  }
+  function addScore(n) {
+    state.score = Math.max(0, Math.min(100, state.score + n));
+    $("#scoreNum").textContent = state.score;
+  }
+  function updateDots() {
+    $$("#dots i").forEach(function (el, i) {
+      el.className = i < state.stage ? "done" : i === state.stage ? "now" : "";
+    });
+  }
+  function setDishHead() {
+    $("#cookEmoji").textContent = state.dish.emoji;
+    $("#cookName").textContent = state.dish.name;
+    var step = state.dish.steps[Math.min(state.stage, state.dish.steps.length - 1)] || "";
+    $("#cookStep").textContent = step;
+  }
+
+  // ---------- 摇菜 ----------
+  var reels = [$("#reel0"), $("#reel1"), $("#reel2")];
+  function renderReel(el, dish, spinning) {
+    el.innerHTML = '<span class="emoji">' + dish.emoji + '</span><span class="name">' + dish.name + '</span>';
+    el.classList.toggle("spin", !!spinning);
+  }
+  function randomDish(except) {
+    var d = RECIPES[Math.floor(Math.random() * RECIPES.length)];
+    if (except && RECIPES.length > 1) {
+      var guard = 0;
+      while (d.name === except && guard++ < 20) d = RECIPES[Math.floor(Math.random() * RECIPES.length)];
+    }
+    return d;
+  }
+
+  var rollTimer = 0;
+  function roll() {
+    if (state.spinning) return;
+    state.spinning = true;
+    clearTimers();
+    $("#rollBtn").disabled = true;
+    var chosen = randomDish(state.dish && state.dish.name);
+    reels.forEach(function (el) { el.classList.add("spin"); });
+    var tick = every(function () {
+      reels.forEach(function (el) { renderReel(el, randomDish(), true); });
+    }, 80);
+    later(function () { clearInterval(tick); }, 1250);
+    [0, 1, 2].forEach(function (i) {
+      later(function () {
+        renderReel(reels[i], chosen, false);
+        sfxTap();
+        if (i === 2) {
+          state.dish = chosen;
+          state.spinning = false;
+          $("#rollBtn").disabled = false;
+          openPreview(chosen);
+        }
+      }, 1100 + i * 200);
+    });
+  }
+
+  function openPreview(dish) {
+    $("#pvEmoji").textContent = dish.emoji;
+    $("#pvName").textContent = dish.name;
+    $("#pvTags").innerHTML = dish.tags.map(function (t) { return '<span class="tag">' + t + '</span>'; }).join("");
+    $("#pvTip").textContent = dish.why || dish.steps[0] || "";
+    show("preview");
+  }
+
+  // ---------- 开始 ----------
+  function startCooking() {
+    clearTimers();
+    state.stage = 0;
+    state.score = 0;
+    state.stageScore = [0, 0, 0, 0];
+    $("#scoreNum").textContent = "0";
+    updateDots();
+    show("cook");
+    startStage1();
+  }
+
+  // ---------- 阶段 1：备菜 ----------
+  function startStage1() {
+    state.stage = 0;
+    updateDots();
+    setDishHead();
+    feedback("");
+    var dish = state.dish;
+    var correct = dish.ingredients.slice(0, Math.min(4, dish.ingredients.length));
+    var pool = [];
+    RECIPES.forEach(function (d) { d.ingredients.forEach(function (x) { if (pool.indexOf(x) < 0) pool.push(x); }); });
+    var others = pool.filter(function (x) { return correct.indexOf(x) < 0; });
+    var distractors = [];
+    while (distractors.length < Math.max(4, 8 - correct.length) && others.length) {
+      var pick = others[Math.floor(Math.random() * others.length)];
+      distractors.push(pick);
+      others.splice(others.indexOf(pick), 1);
+    }
+    var all = correct.map(function (x) { return { name: x, ok: true }; })
+      .concat(distractors.map(function (x) { return { name: x, ok: false }; }));
+    all.sort(function () { return Math.random() - 0.5; });
+
+    var stage1Score = 30;
+    var picked = 0;
+    var html = '<p class="prompt">备菜：选出这道菜需要的食材</p>' +
+      '<p class="subprompt">提示：' + (dish.steps[0] || "把食材准备好") + '</p>' +
+      '<div class="chips" id="ingChips">' +
+      all.map(function (x, i) { return '<button class="chipbtn" type="button" data-i="' + i + '" data-ok="' + x.ok + '">' + x.name + '</button>'; }).join("") +
+      '</div><div class="pickcount"><span>已选 <b id="pickNum">0</b> / ' + correct.length + '</span><span>选错 -5 分</span></div>';
+    $("#stageArea").innerHTML = html;
+
+    $$("#ingChips .chipbtn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (btn.classList.contains("picked") || btn.disabled) return;
+        if (btn.getAttribute("data-ok") === "true") {
+          btn.classList.add("picked");
+          btn.disabled = true;
+          picked++;
+          sfxTap();
+          $("#pickNum").textContent = picked;
+          if (picked === correct.length) {
+            state.stageScore[0] = Math.max(0, stage1Score);
+            addScore(state.stageScore[0]);
+            feedback("备菜完成！", "good");
+            later(function () { startStage2(); }, 700);
+          }
+        } else {
+          btn.classList.add("wrong");
+          stage1Score -= 5;
+          sfxBad();
+          feedback("拿错了，这道菜不需要它 -5", "bad");
+          later(function () { btn.classList.remove("wrong"); }, 320);
+        }
+      });
+    });
+  }
+
+  // ---------- 阶段 2：火候 ----------
+  function startStage2() {
+    state.stage = 1;
+    updateDots();
+    setDishHead();
+    feedback("");
+    var rounds = 3;
+    var round = 1;
+    var pos = 0, dir = 1, speed = 58, zoneStart = 42, zoneWidth = 18;
+    var running = true;
+    var raf = null;
+    var last = 0;
+
+    $("#stageArea").innerHTML =
+      '<p class="prompt">火候：指针进绿区时点「下锅」</p>' +
+      '<p class="subprompt">' + (state.dish.steps[1] || "火候很关键，别糊了") + '</p>' +
+      '<div class="roundspan"><span>第 <b id="heatRound">1</b> / 3 锅</span><span>完美 10 分 · 偏一点 5 分</span></div>' +
+      '<div class="heat" id="heatBar"><div class="zone" id="heatZone"></div><div class="needle" id="needle"></div></div>' +
+      '<button class="btn tapbig" id="wokBtn" type="button">下锅！</button>';
+
+    var bar = $("#heatBar");
+    var zone = $("#heatZone");
+    var needle = $("#needle");
+    var roundEl = $("#heatRound");
+
+    function layoutZone() {
+      zoneStart = 18 + Math.random() * 58;
+      zoneWidth = Math.max(12, 20 - (round - 1) * 3);
+      zone.style.left = zoneStart + "%";
+      zone.style.width = zoneWidth + "%";
+    }
+    layoutZone();
+
+    function tick(t) {
+      if (!running) return;
+      if (!last) last = t;
+      var dt = Math.min(50, t - last) / 1000;
+      last = t;
+      pos += dir * speed * dt;
+      if (pos >= 100) { pos = 100; dir = -1; }
+      if (pos <= 0) { pos = 0; dir = 1; }
+      needle.style.left = pos + "%";
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+
+    function finishRound(points) {
+      state.stageScore[1] += points;
+      addScore(points);
+      if (round >= rounds) {
+        running = false;
+        cancelAnimationFrame(raf);
+        feedback("火候掌握得不错！", "good");
+        later(function () { startStage3(); }, 750);
+        return;
+      }
+      round++;
+      roundEl.textContent = round;
+      speed += 18;
+      layoutZone();
+      pos = 0;
+      dir = 1;
+      feedback(points === 10 ? "完美火候 +10" : points === 5 ? "稍微偏了一点 +5" : "糊了一下 +0", points ? "good" : "bad");
+    }
+
+    $("#wokBtn").addEventListener("click", function () {
+      if (!running) return;
+      var inZone = pos >= zoneStart && pos <= zoneStart + zoneWidth;
+      var near = pos >= zoneStart - 9 && pos <= zoneStart + zoneWidth + 9;
+      var points = inZone ? 10 : near ? 5 : 0;
+      bar.classList.remove("hit", "heatmiss");
+      void bar.offsetWidth;
+      bar.classList.add(points ? "hit" : "heatmiss");
+      if (points) sfxGood(); else sfxBad();
+      finishRound(points);
+    });
+  }
+
+  // ---------- 阶段 3：调味 ----------
+  function startStage3() {
+    state.stage = 2;
+    updateDots();
+    setDishHead();
+    feedback("");
+    var dish = state.dish;
+    var seasonings = ["盐", "生抽", "老抽", "醋", "糖", "冰糖", "红糖", "豆瓣酱", "蚝油", "料酒", "香油", "姜", "蒜", "葱", "花椒", "干辣椒", "胡椒", "番茄膏", "蒸鱼豉油", "黄灯笼椒酱", "芝麻酱", "咖喱"];
+    var correct = null;
+    dish.ingredients.some(function (x) {
+      return seasonings.some(function (s) { return x.indexOf(s) >= 0; }) && (correct = x);
+    });
+    if (!correct) correct = dish.ingredients[Math.floor(Math.random() * dish.ingredients.length)];
+
+    var pool = [];
+    RECIPES.forEach(function (d) { d.ingredients.forEach(function (x) { if (pool.indexOf(x) < 0) pool.push(x); }); });
+    var others = pool.filter(function (x) { return x !== correct; });
+    var opts = [correct];
+    while (opts.length < 4 && others.length) {
+      var p = others[Math.floor(Math.random() * others.length)];
+      opts.push(p);
+      others.splice(others.indexOf(p), 1);
+    }
+    opts.sort(function () { return Math.random() - 0.5; });
+
+    $("#stageArea").innerHTML =
+      '<p class="prompt">调味：这道菜需要哪一样？</p>' +
+      '<p class="subprompt">' + (dish.steps[2] || "按菜谱调味，别手抖") + '</p>' +
+      '<div class="season" id="seasonBox">' +
+      opts.map(function (x) { return '<button class="seasonbtn" type="button" data-x="' + x + '">' + x + '</button>'; }).join("") +
+      '</div>';
+
+    var answered = false;
+    $$("#seasonBox .seasonbtn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (answered) return;
+        answered = true;
+        var ok = btn.getAttribute("data-x") === correct;
+        btn.classList.add(ok ? "correct" : "wrong");
+        if (!ok) {
+          $$("#seasonBox .seasonbtn").forEach(function (b) {
+            if (b.getAttribute("data-x") === correct) b.classList.add("correct");
+          });
+          sfxBad();
+          feedback("调味不对，正确答案是「" + correct + "」", "bad");
+        } else {
+          state.stageScore[2] = 20;
+          addScore(20);
+          sfxGood();
+          feedback("调味正确 +20", "good");
+        }
+        later(function () { startStage4(); }, 900);
+      });
+    });
+  }
+
+  // ---------- 阶段 4：装盘 ----------
+  function startStage4() {
+    state.stage = 3;
+    updateDots();
+    setDishHead();
+    feedback("");
+    var need = 12;
+    var done = 0;
+    var timeLeft = 4.0;
+    var used = 0;
+    var finished = false;
+
+    $("#stageArea").innerHTML =
+      '<p class="prompt">装盘：快速点击 ' + need + ' 下，把菜装进盘子</p>' +
+      '<p class="subprompt">' + (state.dish.steps[3] || "最后一步，摆盘要好看") + '</p>' +
+      '<div class="platewrap"><div class="plate" id="plate"></div>' +
+      '<div class="timer">剩余时间 <b id="timeLeft">4.0</b>s</div>' +
+      '<button class="btn tapbig" id="plateBtn" type="button">装盘 +1</button></div>';
+
+    var plate = $("#plate");
+    var timerEl = $("#timeLeft");
+
+    function place() {
+      var el = document.createElement("div");
+      el.className = "piece";
+      var ang = Math.random() * Math.PI * 2;
+      var rad = 12 + Math.random() * 52;
+      el.style.left = (50 + Math.cos(ang) * rad) + "%";
+      el.style.top = (50 + Math.sin(ang) * rad) + "%";
+      el.textContent = state.dish.emoji;
+      plate.appendChild(el);
+    }
+
+    function finish(score, msg) {
+      if (finished) return;
+      finished = true;
+      clearInterval(timer);
+      state.stageScore[3] = score;
+      addScore(score);
+      feedback(msg, score > 0 ? "good" : "bad");
+      later(function () { showResult(); }, 850);
+    }
+
+    var timer = every(function () {
+      timeLeft = Math.max(0, timeLeft - 0.1);
+      timerEl.textContent = timeLeft.toFixed(1);
+      if (timeLeft <= 0) finish(done >= need ? 15 : Math.round(done / need * 8), done >= need ? "赶在最后一刻装好了" : "手慢了，菜凉了一点");
+    }, 100);
+
+    $("#plateBtn").addEventListener("click", function () {
+      if (finished) return;
+      done++;
+      place();
+      sfxTap();
+      if (done >= need) {
+        var bonus = timeLeft >= 2.5 ? 20 : timeLeft >= 1.5 ? 17 : 14;
+        finish(bonus, "装盘完成！");
+      }
+    });
+  }
+
+  // ---------- 结果 ----------
+  function showResult() {
+    clearTimers();
+    state.stage = 4;
+    updateDots();
+    var score = state.score;
+    var stars = score >= 85 ? 3 : score >= 65 ? 2 : 1;
+    $("#resEmoji").textContent = state.dish.emoji;
+    $("#resName").textContent = state.dish.name;
+    $("#resScore").textContent = score;
+    $("#resStars").innerHTML = new Array(3).fill(0).map(function (_, i) {
+      return '<span class="' + (i < stars ? "" : "off") + '">★</span>';
+    }).join("");
+    var comments = {
+      3: "完美出锅！这盘可以端给客人了。",
+      2: "味道不错，火候再稳一点就更好了。",
+      1: "能吃，但下次别一边做一边刷手机。"
+    };
+    $("#resComment").textContent = comments[stars];
+    $("#resSteps").innerHTML = state.dish.steps.map(function (s) { return "<li>" + s + "</li>"; }).join("");
+
+    var isNew = save.cooked.indexOf(state.dish.name) < 0;
+    if (isNew) save.cooked.push(state.dish.name);
+    if (!save.best[state.dish.name] || score > save.best[state.dish.name]) save.best[state.dish.name] = score;
+    persist();
+    updateDex();
+    $("#newTag").innerHTML = isNew ? '<span class="newtag">NEW · 图鉴 +1</span>' : "";
+
+    show("result");
+    if (score >= 85) {
+      sfxWin();
+      confetti();
+    } else {
+      sfxGood();
+    }
+  }
+
+  function confetti() {
+    var box = $("#confetti");
+    var colors = ["#e2542f", "#f0a33d", "#4f7a4a", "#8b5cf6", "#ffcf5c"];
+    for (var i = 0; i < 42; i++) {
+      (function (i) {
+        setTimeout(function () {
+          var el = document.createElement("i");
+          el.style.left = Math.random() * 100 + "vw";
+          el.style.top = "-10px";
+          el.style.background = colors[i % colors.length];
+          el.style.width = (6 + Math.random() * 6) + "px";
+          el.style.height = (8 + Math.random() * 8) + "px";
+          box.appendChild(el);
+          var dur = 1600 + Math.random() * 900;
+          var drift = (Math.random() - 0.5) * 240;
+          el.animate([
+            { transform: "translate3d(0,0,0) rotate(0deg)", opacity: 1 },
+            { transform: "translate3d(" + drift + "px, 105vh, 0) rotate(" + (360 + Math.random() * 540) + "deg)", opacity: .9 }
+          ], { duration: dur, easing: "cubic-bezier(.2,.6,.4,1)", fill: "forwards" }).onfinish = function () { el.remove(); };
+        }, i * 18);
+      })(i);
+    }
+  }
+
+  // ---------- 事件 ----------
+  $("#rollBtn").addEventListener("click", roll);
+  $("#startBtn").addEventListener("click", startCooking);
+  $("#rerollBtn").addEventListener("click", function () { show("slot"); later(roll, 150); });
+  $("#againBtn").addEventListener("click", function () {
+    show("slot");
+    state.dish = null;
+    later(roll, 250);
+  });
+  $("#mealLink").addEventListener("click", function () {
+    window.location.href = "https://nikon1koni.github.io/meal-slot/";
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.code === "Space" || e.key === " ") {
+      var active = document.activeElement;
+      if (active && active.tagName === "BUTTON") return;
+      if (screen.slot.classList.contains("active")) { e.preventDefault(); roll(); }
+    }
+  });
+
+  // ---------- 初始化 ----------
+  updateDex();
+  reels.forEach(function (el, i) {
+    renderReel(el, RECIPES[(i * 7 + 3) % RECIPES.length], false);
+  });
+})();
+</script>
+</body>
+</html>
